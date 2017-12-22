@@ -3,6 +3,8 @@
     "version": "0.1.0",
     "private": true,
     "dependencies": {
-        "bleacon": "^0.5.1"
+        "bleacon": "^0.5.1",
+        "knex": "^0.14.2",
+        "sqlite3": "^3.1.13"
     }
 }
