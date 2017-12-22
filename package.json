@@ -1,0 +1,9 @@
+{
+    "name": "tilter",
+    "version": "0.1.0",
+    "private": true,
+    "dependencies": {
+        "bleacon": "^0.5.1"
+    }
+}
+
