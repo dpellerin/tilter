@@ -11,7 +11,9 @@ var tiltred = 'a495bb10c5b14b44b5121370f02d74de'
 // Bleacon.startAdvertising(uuid, major, minor, measuredPower);
 
 Bleacon.on('discover', function(bleacon){
-    console.log(bleacon);
+    console.log("Tilt RED: " + bleacon.uuid);
+    console.log("Temp    : " + bleacon.major + "f");
+    console.log("SG      : " + (bleacon.minor/1000)); 
 });
 
 Bleacon.startScanning(tiltred);
