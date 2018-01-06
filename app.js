@@ -1,6 +1,7 @@
-var Bleacon = require('bleacon');
+var bleacon = require('bleacon');
 var knex = require('knex')({
     dialect: 'sqlite3',
+    debug: false,
     connection: {
       filename: './db/tilter.sqlt'
     },
@@ -20,14 +21,14 @@ var tilts = [
 ];
 
 // Verify and Create Schema
-knex.schema.hasTable('sessions').then(function (exists) {
+knex.schema.hasTable('brew_sessions').then(function (exists) {
     if (!exists) {
-        return knex.schema.createTable('sessions', function (t) {
+        return knex.schema.createTable('brew_sessions', function (t) {
             t.increments('id').primary();
-            t.string('session_name');
-            t.dateTime('start_date');
-            t.dateTime('end_date');
+            t.string('brew_session_name');
+            t.dateTime('created_date');
             t.string('uuid');
+            t.integer('active');
         });
     }
 });
@@ -45,9 +46,12 @@ knex.schema.hasTable('tilt_data').then(function (exists) {
 });
 
 
-Bleacon.on('discover', function(bleacon){
-    if (!isTilt()) {
+bleacon.on('discover', function(bleacon){
+    if ( !isTilt(bleacon) || !brewSessionExists(bleacon) ) {
+        console.log("not a tilt or no session for color")
         return;
+    } else {
+        console.log("tilt recognized and session open")
     }
 
     elapsedTime = (new Date().getTime() - collection_date.getTime()) / 1000;
@@ -59,31 +63,42 @@ Bleacon.on('discover', function(bleacon){
         console.log("SG      : " + (bleacon.minor/1000));
 
         // Write to database
-        knex('tilt_data').insert(
-            {
-                session_id: 1, 
-                collection_date: collection_date, 
-                sg: bleacon.minor, 
-                temperature: bleacon.major,
-                uuid: bleacon.uuid
-            }
-        ).then(function(){
-            console.log("data written");
-        });
+        // knex('tilt_data').insert(
+        //     {
+        //         session_id: 1, 
+        //         collection_date: collection_date, 
+        //         sg: bleacon.minor, 
+        //         temperature: bleacon.major,
+        //         uuid: bleacon.uuid
+        //     }
+        // ).then(function(){
+        //     console.log("data written");
+        // });
     }
 });
 
-Bleacon.startScanning();
+bleacon.startScanning();
 console.log("Listening for Tilts");
 
 
 // Functions
-function isTilt () {
+function isTilt (bleacon) {
     for (let i = 0; i < tilts.length; i++) {
         if (tilts[i].uuid === bleacon.uuid) {
-            console.log(tilts[i].color);
+            console.log("isTilt = true");
             return true;
         }
     }
     return false;
+}
+
+function brewSessionExists (bleacon) {
+    knex('brew_sessions').where('uuid', bleacon.uuid).where('active', 1).first().then( data => {
+        if (data) {
+            console.log("brewSessionExists = true");
+            return true;
+        } else {
+            return false;
+        }
+    });
 }
