@@ -47,33 +47,19 @@ knex.schema.hasTable('tilt_data').then(function (exists) {
 
 
 bleacon.on('discover', function(bleacon){
-    if ( !isTilt(bleacon) || !brewSessionExists(bleacon) ) {
-        console.log("not a tilt or no session for color")
-        return;
-    } else {
-        console.log("tilt recognized and session open")
-    }
-
     elapsedTime = (new Date().getTime() - collection_date.getTime()) / 1000;
     if (elapsedTime > interval) {
-        collection_date = new Date();
-        console.log("Time    : " + collection_date);
-        console.log("Tilt RED: " + bleacon.uuid);
-        console.log("Temp    : " + bleacon.major + "f");
-        console.log("SG      : " + (bleacon.minor/1000));
-
-        // Write to database
-        // knex('tilt_data').insert(
-        //     {
-        //         session_id: 1, 
-        //         collection_date: collection_date, 
-        //         sg: bleacon.minor, 
-        //         temperature: bleacon.major,
-        //         uuid: bleacon.uuid
-        //     }
-        // ).then(function(){
-        //     console.log("data written");
-        // });
+        if ( !isTilt(bleacon) ) {
+            console.log("not a tilt or no session for color")
+            return;
+        } else {
+            checkForBrewSession(bleacon).then(function () {
+                recordTiltData(bleacon);
+                console.log("resolved");
+            }, function () {
+                console.log("rejected");
+            });
+        }
     }
 });
 
@@ -82,6 +68,28 @@ console.log("Listening for Tilts");
 
 
 // Functions
+
+function recordTiltData(bleacon) {
+    collection_date = new Date();
+    console.log("Time    : " + collection_date);
+    console.log("Tilt RED: " + bleacon.uuid);
+    console.log("Temp    : " + bleacon.major + "f");
+    console.log("SG      : " + (bleacon.minor / 1000));
+
+    // Write to database
+    // knex('tilt_data').insert(
+    //     {
+    //         session_id: 1, 
+    //         collection_date: collection_date, 
+    //         sg: bleacon.minor, 
+    //         temperature: bleacon.major,
+    //         uuid: bleacon.uuid
+    //     }
+    // ).then(function(){
+    //     console.log("data written");
+    // });
+}
+
 function isTilt (bleacon) {
     for (let i = 0; i < tilts.length; i++) {
         if (tilts[i].uuid === bleacon.uuid) {
@@ -92,13 +100,16 @@ function isTilt (bleacon) {
     return false;
 }
 
-function brewSessionExists (bleacon) {
-    knex('brew_sessions').where('uuid', bleacon.uuid).where('active', 1).first().then( data => {
-        if (data) {
-            console.log("brewSessionExists = true");
-            return true;
-        } else {
-            return false;
-        }
+function checkForBrewSession (bleacon) {
+    return new Promise((resolve, reject) => {
+        knex('brew_sessions').where('uuid', bleacon.uuid).where('active', 1).first().then( data => {
+            if (data) {
+                console.log("tilt recognized, recording data: " + bleacon.active)
+                resolve(bleacon);
+            } else {
+                console.log("tilt has no open session")
+                reject();
+            }
+        });
     });
 }
